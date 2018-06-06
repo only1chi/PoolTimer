@@ -1,0 +1,60 @@
+Notes on how to rebuild this project:
+
+# Install react native client
+npm install -g react-native-cli
+
+# Need Android Development Environment 
+https://www.raywenderlich.com/177533/beginning-android-development-kotlin-part-one-installing-android-studio
+
+# Need to start project
+react-native init <ProjectName>
+
+# index.js is the entry point created by the CLI tool
+# App.js is the skeletal app created by the CLI tool
+# android is a folder containing an Android project and the code required to bootstrap your application
+# ios is a folder containing iOS-related code, which you won�t be touching in this tutorial.
+
+# create local.properties in android folder
+sdk.dir=C\:\\Users\\cchikwendu\\AppData\\Local\\Android\\Sdk
+
+# Required Node Modules Packages
+yarn add react-navigation
+npm install aws-iot-device-sdk --save
+npm install react-native-material-ui --save
+npm install react-native-vector-icons --save
+npm install aws-amplify --save
+npm install aws-amplify-react-native --save
+npm install asyncstorage-down --save
+npm install tls --save
+npm install --save react-moment
+npm i react-native-awesome-alerts --save
+npm install react-native-network-info@3.1.0 --save
+
+# Install React Native Nodeify
+npm install rn-nodeify --save
+
+# Install node-libs-react-native which packages common node files
+# like "fs", "util", "path" for React Native 
+npm install node-libs-react-native --save 
+
+# edit the package.json file and add this in the script section
+"postinstall": "rn-nodeify --install --hack"
+
+# Run "yarn" 
+# This shims/hacks node files for compatibility with React Native
+yarn
+
+# This creats a shim.js file which is placed in the root folder
+# Create a file called "rn-cli.config.js", and add the following
+// rn-cli.config.js
+module.exports = {
+  extraNodeModules: require('node-libs-react-native'),
+};
+
+# include shim.js at the root of index.js
+# require rn-cli.config.js in all your files at the root
+# before any include statement
+
+# Add the following links - ReactNative links
+react-native link amazon-cognito-identity-js
+react-native link react-native-vector-icons
