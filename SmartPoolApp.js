@@ -29,6 +29,7 @@ YellowBox.ignoreWarnings(['Setting a timer']);
 YellowBox.ignoreWarnings(['Remote debugger is in a background tab']);
 
 const { iotLogin } = require("./aws/cred.json");
+const { weatherLogin } = require("./aws/cred.json");
 
 var Color = require('color');
 var isUndefined = require('aws-iot-device-sdk/common/lib/is-undefined')
@@ -44,7 +45,6 @@ export default class SmartPoolApp extends Component<{}> {
       super(props);
       this.state = {
         time: '',
-        location: {},
         pumpButton: false,
         isConnectedToThingShadow: false,
         deviceId: '',
@@ -63,81 +63,77 @@ export default class SmartPoolApp extends Component<{}> {
   }
 
   componentDidMount() {
-//      this.Clock = setInterval( () => this.displayTime(), this.getTime(), this.getFullDate(), 1000 );
       this.Clock = setInterval( () => this.displayTime(), 1000 );
       this.setState({deviceId: this.props.navigation.state.params.device_id});
       this.myDeviceShadow = this.configureIotDevice();
-//      this.getLocation();
+      this.getLocation();
   }
 
   componentWillUnmount(){
     clearInterval(this.Clock);
   }
 
+  capitalizeFirstLetter = string => string.charAt(0).toUpperCase() + string.slice(1);
+
   displayTime() {
-//    this.setState({ time: moment.tz(timezoneformat).format(yourdesiredformat)})
+    // this.setState({ time: moment.tz(timezoneformat).format(yourdesiredformat)})
     // moment().format('MMMM Do YYYY, h:mm:ss a')
     const now = moment().format('LLLL');
     this.setState({ time: now});
   }
 
-  async getLocation() {
+  getLocation() {
 
-    console.log('in get Location');
-        // Get Local IP
-    NetworkInfo.getIPAddress( async(ip) => {
-      console.log("ip :", ip);
-      const apiURL = 'http://ip-api.com/json/' + ip;
-      const myRequest = {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        mode: 'cors',
-        dataType: 'json',
-        cache: 'default',
-      };
+    console.log('getting location...');
+    let ip = '';
 
-      await fetch(apiURL, myRequest)
-      .then(async (response) => {
-//        await response.ok
-        console.log("response ", await response);
-        this.setState({ location: response});
+    // Get IP from external source
+    const ipURL = 'https://api.ipify.org?format=json';
+    const myRequest = {
+      method: 'GET',
+      headers: {'Content-Type': 'application/json'},
+      mode: 'cors',
+    };
+    fetch(ipURL, myRequest)
+    .then(response => {
+      if (response.ok) {
+        response.json().then((response) => {
+          // console.log("ip: ", response);
+          ip = response.ip;
+        })
+      }
+    })
+    .catch(error => console.log(error));
+
+    // Using Ip address, get location from IP
+    const apiURL = 'http://ip-api.com/json/' + ip; // example "74.104.126.95"
+    fetch(apiURL, myRequest)
+      .then(response => {
+        if (response.ok) {
+          response.json().then((response) => {
+            console.log("response ", response);
+            this.myDeviceLocation = response;
+            this.getWeather();
+          })
+        }
       })
       .catch(error => console.log(error));
-    });
-    // http://ip-api.com/json/50.202.139.214
 
-    // response=
-    // {
-    // "as": "AS7922 Comcast Cable Communications, LLC",
-    // "city": "Cambridge",
-    // "country": "United States",
-    // "countryCode": "US",
-    // "isp": "Comcast Business",
-    // "lat": 42.3646,
-    // "lon": -71.1028,
-    // "org": "Comcast Business",
-    // "query": "50.202.139.214",
-    // "region": "MA",
-    // "regionName": "Massachusetts",
-    // "status": "success",
-    // "timezone": "America/New_York",
-    // "zip": "02139"
-    // }
   }
 
-  async getWeather() {
-
+  // Function to get Weather information
+  getWeather() {
 		const urlParam ={
-			lat: this.state.location.lat,
-			lon: this.state.location.lon,
+			lat: this.myDeviceLocation.lat,
+			lon: this.myDeviceLocation.lon,
+      APPID: weatherLogin.APPID,
 		};
     const querystring = Object.keys(urlParam)
       .map(key => key + '=' + encodeURIComponent(urlParam[key]))
       .join('&');
 
     const apiURL = 'https://api.openweathermap.org/data/2.5/weather?' + querystring;
+    // console.log('weather URL: ', apiURL);
 
     const myRequest = {
       method: 'GET',
@@ -145,17 +141,21 @@ export default class SmartPoolApp extends Component<{}> {
         'Content-Type': 'application/json'
       },
       mode: 'cors',
-      dataType: 'json',
-      cache: 'default',
     };
 
-    await fetch(apiURL, myRequest)
-    .then(async (response) => {
-//      await response.ok
-      console.log("response ", await response);
+    console.log("In getWeather");
+    fetch(apiURL, myRequest)
+    .then((response) => {
+      // console.log("first response: ", response);
+      if (response.ok) {
+        response.json().then((response) => {
+          console.log('weather data: ', response);
+          this.myDeviceWeather = response;
+        })
+      }
     })
     .catch(error => console.log(error));
-}
+  }
 
   onPumpButtonPressed = () => {
     this.setState({pumpButton: !this.state.pumpButton},this.handleShadowUpdate);
@@ -163,6 +163,8 @@ export default class SmartPoolApp extends Component<{}> {
 
   //  An instance of the device Shadow
   myDeviceShadow;
+  myDeviceLocation;
+  myDeviceWeather;
 
   //  Configure device Shadow
   configureIotDevice() {
@@ -253,7 +255,8 @@ export default class SmartPoolApp extends Component<{}> {
   }
 
   render() {
-//    console.log("In Smart Pool App");
+    // console.log("In Smart Pool App");
+    // console.log("myDeviceLocation: ", this.myDeviceLocation);
     const { params } = this.props.navigation.state;
     const { device } = this.state;
     const connectText = this.state.isConnectedToThingShadow ? "Connected" : "NOT Connected";
@@ -266,6 +269,24 @@ export default class SmartPoolApp extends Component<{}> {
     const modeLookAndFeel = device.auto ? <Image source={require('./images/auto_48.png')}/> :
                                           <Image source={require('./images/manual_48.png')}/>;
 
+    const cityState = this.myDeviceLocation && (this.myDeviceLocation.status == "success") ?
+                      this.myDeviceLocation.city + ', ' + this.myDeviceLocation.region : '';
+
+
+    // let weatherIcon = <Image source={require('./images/manual_48.png')}/>;
+    let weatherIcon = <View />;
+    let weatherDescription = '';
+    if (this.myDeviceWeather) {
+      const weatherIconSource = `http://openweathermap.org/img/w/${this.myDeviceWeather.weather[0].icon}.png`;
+       weatherIcon = <Image source={{uri: weatherIconSource}} style={{width: 50, height: 50}}/>;
+       weatherDescription = this.myDeviceWeather.weather[0].description;
+       console.log("weather icon source", weatherIconSource );
+    }
+    // else {
+    //   const weatherIconSource = '';
+    //   console.log("weather icon source", weatherIconSource );
+    // }
+
     return (
       <ThemeProvider uiTheme={darkBaseTheme}>
         <View style={styles.container}>
@@ -275,10 +296,14 @@ export default class SmartPoolApp extends Component<{}> {
 
           <View style={styles.locationContainer}>
             <Text style={styles.NormalText}>
-              city, state
+              {nowDate}
+            </Text>
+            {weatherIcon}
+            <Text style={styles.NormalText}>
+            {`${this.capitalizeFirstLetter(weatherDescription)}`}
             </Text>
             <Text style={styles.NormalText}>
-              {nowDate}
+              {cityState}
             </Text>
           </View>
 
@@ -325,6 +350,15 @@ export default class SmartPoolApp extends Component<{}> {
           </View>
         </View>
 
+        <View style={styles.timerContainer}>
+          <View style={styles.dataItemContainer}>
+            <Text style={styles.NormalText}>SET TIMER</Text>
+          </View>
+          <View style={styles.dataItemContainer}>
+            <Text style={styles.NormalText}>SET SCHEDULE</Text>
+          </View>
+        </View>
+
         </View>
         </ThemeProvider>
     );
@@ -343,7 +377,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
   },
   locationContainer: {
-    flex: 1,
+    flex: 2,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
@@ -367,6 +401,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
 //    backgroundColor: 'black',
+  },
+  timerContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'black',
   },
   NormalText: {
     fontSize: 16,

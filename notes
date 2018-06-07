@@ -3,7 +3,7 @@ Notes on how to rebuild this project:
 # Install react native client
 npm install -g react-native-cli
 
-# Need Android Development Environment 
+# Need Android Development Environment
 https://www.raywenderlich.com/177533/beginning-android-development-kotlin-part-one-installing-android-studio
 
 # Need to start project
@@ -34,13 +34,13 @@ npm install react-native-network-info@3.1.0 --save
 npm install rn-nodeify --save
 
 # Install node-libs-react-native which packages common node files
-# like "fs", "util", "path" for React Native 
-npm install node-libs-react-native --save 
+# like "fs", "util", "path" for React Native
+npm install node-libs-react-native --save
 
 # edit the package.json file and add this in the script section
 "postinstall": "rn-nodeify --install --hack"
 
-# Run "yarn" 
+# Run "yarn"
 # This shims/hacks node files for compatibility with React Native
 yarn
 
@@ -58,3 +58,33 @@ module.exports = {
 # Add the following links - ReactNative links
 react-native link amazon-cognito-identity-js
 react-native link react-native-vector-icons
+
+
+# JSON format for get location from http://ip-api.com/json/50.202.139.214
+response=
+{
+"as": "AS7922 Comcast Cable Communications, LLC",
+"city": "Cambridge",
+"country": "United States",
+"countryCode": "US",
+"isp": "Comcast Business",
+"lat": 42.3646,
+"lon": -71.1028,
+"org": "Comcast Business",
+"query": "50.202.139.214",
+"region": "MA",
+"regionName": "Massachusetts",
+"status": "success",
+"timezone": "America/New_York",
+"zip": "02139"
+}
+
+Running application "PoolTimer" with appParams: {"rootTag":11}. __DEV__ === true, development-level warning are ON, performance optimizations are OFF
+
+Running application "PoolTimer" with appParams: {"rootTag":1}. __DEV__ === true, development-level warning are ON, performance optimizations are OFF
+
+// Auth.updateUserAttributes(user, {
+//     'custom:device_id': 'esp32_013EC8',
+// })
+// .then(result => console.log('result: ', result))
+// .catch(err => console.log(err));

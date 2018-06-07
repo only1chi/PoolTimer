@@ -63,6 +63,28 @@ export default class SmartPoolLogin extends Component<{}> {
 		};
 	}
 
+ componentDidMount () {
+   Auth.currentSession()
+   .then((user) => {
+     // here redirect to smartpoolApp
+     console.log("currentAuthenticatedUser", user);
+     const id = user.idToken.payload["custom:device_id"];
+     this.props.navigation.navigate('SmartPoolApp', {
+         device_id: id,
+         isLoggedIn: true,
+         currentUser: user});
+   })
+   .catch(err => console.log(err));
+
+   // Auth.currentUserInfo()
+   // .then((me) => {
+   //   const id = me.attributes["custom:device_id"];
+   //   console.log("currentuserinfo ", me);
+   //   console.log('SmartPoolApp device_id: ', id);
+   // })
+   // .catch(err => console.log(err));
+ }
+
  authConfig = Amplify.configure({
        Auth: {
     // REQUIRED - Amazon Cognito Identity Pool ID
@@ -128,17 +150,13 @@ export default class SmartPoolLogin extends Component<{}> {
       Auth.currentUserInfo()
       .then((me) => {
         const id = me.attributes["custom:device_id"];
+        console.log("currentuserinfo ", me);
         console.log('SmartPoolApp device_id: ', id);
         // here redirect to smartpoolApp
         this.props.navigation.navigate('SmartPoolApp', {
             device_id: id,
             isLoggedIn: true,
             currentUser: response});
-          // Auth.updateUserAttributes(user, {
-          //     'custom:device_id': 'esp32_013EC8',
-          // })
-          // .then(result => console.log('result: ', result))
-          // .catch(err => console.log(err));
       })
       .catch(err => console.log(err));
 
@@ -157,24 +175,23 @@ export default class SmartPoolLogin extends Component<{}> {
 		this.props.navigation.navigate('SmartPoolLogin', {});
 	}
 
-	_handleLogin = async () => {
+	_handleLogin() {
 		const { state } = this.state;
     const username = this.state.email;
     const password = this.state.password;
 
     Auth.signIn(username, password)
-    .then(async (user) => {
+    .then((user) => {
       this.setState({
          isLoggedIn: true,
-      });
-      this._handleResponseLogin (await user);
+      })
+      this._handleResponseLogin (user);
     })
     .catch(err => Alert.alert("Error: " + err.message));
     // err is an object with keys "code", "name" and "message"
-
   };
 
-	_handleRegister = async () => {
+	_handleRegister() {
 		const { state } = this.state;
     const username = this.state.email;
     const password = this.state.password;
@@ -191,8 +208,8 @@ export default class SmartPoolLogin extends Component<{}> {
         },
         validationData: []  //optional
     })
-    .then(async (data) => {
-      this._handleResponseRegister(await data);
+    .then((data) => {
+      this._handleResponseRegister(data);
     })
     .catch(err => console.log(err));
 
