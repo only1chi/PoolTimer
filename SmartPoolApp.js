@@ -351,16 +351,6 @@ export default class SmartPoolApp extends Component<{}> {
 
   handleShadowUpdate(desiredObject) {
     // function to handle changes in shadow State
-    // if (this.state.setTime) {
-    //   var poolTimerState = {"state":{"desired":{
-    //     relay: Number(this.state.pumpButton),
-    //     timer: this.state.device.timer,
-    //     schedule: this.state.device.schedule,
-    //   }}};
-    // }
-    // else {
-    //   var poolTimerState = {"state":{"desired":{relay: Number(this.state.pumpButton)}}};
-    // }
     var poolTimerState = {"state":{"desired": desiredObject}};
 
     console.log("updating " + this.state.deviceId + ": " + JSON.stringify(poolTimerState.state.desired));
