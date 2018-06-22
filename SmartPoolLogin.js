@@ -6,22 +6,22 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  ScrollView,
   View,
-  ActivityIndicator,
   Image,
   Dimensions,
   YellowBox,
 } from 'react-native';
 
-//import AwesomeAlert from 'react-native-awesome-alerts';
 import { COLOR, ThemeProvider, Button } from 'react-native-material-ui';
 import darkBaseTheme from './darkBaseTheme';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Amplify from 'aws-amplify';
 import { Auth } from 'aws-amplify';
 
+// Warnings I can't do anything about
 YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated', 'Module RCTImageLoader']);
+YellowBox.ignoreWarnings(['Setting a timer']);
+YellowBox.ignoreWarnings(['Remote debugger is in a background tab']);
 
 const { cognitoLogin } = require("./aws/cred.json");
 
@@ -75,14 +75,6 @@ export default class SmartPoolLogin extends Component<{}> {
          currentUser: user});
    })
    .catch(err => console.log(err));
-
-   // Auth.currentUserInfo()
-   // .then((me) => {
-   //   const id = me.attributes["custom:device_id"];
-   //   console.log("currentuserinfo ", me);
-   //   console.log('SmartPoolApp device_id: ', id);
-   // })
-   // .catch(err => console.log(err));
  }
 
  authConfig = Amplify.configure({
@@ -214,7 +206,6 @@ export default class SmartPoolLogin extends Component<{}> {
     .catch(err => console.log(err));
 
     /* TODO Need to create ioT Thing shadow and add it to database*/
-
   };
 
   render() {
