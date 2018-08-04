@@ -114,25 +114,28 @@ export default class SmartPoolApp extends Component<{}> {
   getLocation() {
 
     console.log('getting location...');
-    let ip = '';
-
-    // Get IP from external source
-    const ipURL = 'https://api.ipify.org?format=json';
     const myRequest = {
       method: 'GET',
       headers: {'Content-Type': 'application/json'},
       mode: 'cors',
     };
-    fetch(ipURL, myRequest)
-    .then(response => {
-      if (response.ok) {
-        response.json().then((response) => {
-          // console.log("ip: ", response);
-          ip = response.ip;
-        })
-      }
-    })
-    .catch(error => console.log(error));
+    let ip = this.state.device.ip === null ? '': this.state.device.ip;
+
+    if (ip === '') {
+      // Get IP from external source
+      const ipURL = 'https://api.ipify.org?format=json';
+      fetch(ipURL, myRequest)
+      .then(response => {
+        if (response.ok) {
+          response.json().then((response) => {
+            ip = response.ip;
+          })
+        }
+      })
+      .catch(error => console.log(error));
+    }
+
+    // console.log("ip is: ", ip);
 
     // Using Ip address, get location from IP
     const apiURL = 'http://ip-api.com/json/' + ip; // example "74.104.126.95"
@@ -162,7 +165,6 @@ export default class SmartPoolApp extends Component<{}> {
       .join('&');
 
     const apiURL = 'https://api.openweathermap.org/data/2.5/weather?' + querystring;
-    // console.log('weather URL: ', apiURL);
 
     const myRequest = {
       method: 'GET',
@@ -221,12 +223,12 @@ export default class SmartPoolApp extends Component<{}> {
   _handleDailyStartTimePicked = (stime) => {
     const newObject = Object.assign({}, this.state.device);
     if (this.state.timerMode === 'timer') {
-      const newTimerObject = Object.assign(this.state.device.timer, {start: moment(stime).format('X')});
+      const newTimerObject = Object.assign(this.state.device.timer, {start: moment.utc(stime).format('X')});
       newObject.timer = newTimerObject;
       this.setState({device: newObject}, console.log("timer :", this.state.device.timer));  
     }
     else {  
-      const newTimerObject = Object.assign(this.state.device.schedule, {start: moment(stime).format('X')});
+      const newTimerObject = Object.assign(this.state.device.schedule, {start: moment.utc(stime).format('X')});
       newObject.schedule = newTimerObject;
       this.setState({device: newObject}, console.log("schedule :", this.state.device.schedule));
     }
@@ -236,12 +238,12 @@ export default class SmartPoolApp extends Component<{}> {
   _handleDailyStopTimePicked = (stime) => {
     const newObject = Object.assign({}, this.state.device);
     if (this.state.timerMode === 'timer') {
-      const newTimerObject = Object.assign(this.state.device.timer, {stop: moment(stime).format('X')});
+      const newTimerObject = Object.assign(this.state.device.timer, {stop: moment.utc(stime).format('X')});
       newObject.timer = newTimerObject;
       this.setState({device: newObject}, console.log("timer :", this.state.device.timer)); 
     }
     else {
-      const newTimerObject = Object.assign(this.state.device.schedule, {stop: moment(stime).format('X')});
+      const newTimerObject = Object.assign(this.state.device.schedule, {stop: moment.utc(stime).format('X')});
       newObject.schedule = newTimerObject;
       this.setState({device: newObject}, console.log("schedule :", this.state.device.schedule));
     }
@@ -312,9 +314,8 @@ export default class SmartPoolApp extends Component<{}> {
              console.log('received '+stat+' on '+thingName+': '+
                          JSON.stringify(stateObject));
              if (stateObject.state.reported) {
-               // console.log('stateObject: ', stateObject);
                var reportedState = Object.assign(device, stateObject.state.reported)
-               that.setState ({ device: reportedState  });
+               that.setState ({ device: reportedState  }, that.getLocation());
              }
           });
 
@@ -431,6 +432,8 @@ export default class SmartPoolApp extends Component<{}> {
     const connectText = this.state.isConnectedToThingShadow ? "Connected" : "NOT Connected";
     const nowDate = this.state.time;
 
+    const deviceIP = device.ip ? device.ip : "";
+
     const iconRelayLook = device.relay ?  <Image source={require('./images/power.png')}/> :
                                           <Image source={require('./images/power_off.png')}/>;
 
@@ -443,6 +446,7 @@ export default class SmartPoolApp extends Component<{}> {
 
     const modalRenderFunc = this.state.timerMode === 'timer' ? this._renderTimerView("Set Timer", this.state.device.timer) :
                                                                 this._renderTimerView("Set Daily Schedule", this.state.device.schedule);
+    
     let weatherIcon = <View />;
     let weatherDescription = '';
     if (this.myDeviceWeather) {

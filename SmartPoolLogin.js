@@ -17,6 +17,7 @@ import darkBaseTheme from './darkBaseTheme';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import Amplify from 'aws-amplify';
 import { Auth } from 'aws-amplify';
+import Modal from 'react-native-modal';
 
 // Warnings I can't do anything about
 YellowBox.ignoreWarnings(['Warning: isMounted(...) is deprecated', 'Module RCTImageLoader']);
@@ -53,11 +54,15 @@ export default class SmartPoolLogin extends Component<{}> {
 
 		this.state= {
 			email: '',
-			password: '',
+      password: '',
+      code: '',
 			device_id: '',
 			isLoggedIn: false,
 			message: '',
-			isLoginMode: true,
+      isVisibleConfirmModal: false,
+      isVisibleForgotPasswordModal: false,
+      isVisibleResetPasswordModal: false,
+      pageMode: "login",
 			altModeText: 'Register ?',
       showAlert: 'false',
 		};
@@ -76,6 +81,14 @@ export default class SmartPoolLogin extends Component<{}> {
    })
    .catch(err => console.log(err));
  }
+
+ componentWillMount() {
+  this.setState({
+    isVisibleConfirmModal: false,
+    isVisibleForgotPasswordModal: false,
+    isVisibleResetPasswordModal: false,
+  });
+}
 
  authConfig = Amplify.configure({
        Auth: {
@@ -100,26 +113,51 @@ export default class SmartPoolLogin extends Component<{}> {
 
 
   _onSubmitPressed = () => {
-		if (this.state.isLoginMode) {
-			return this._handleLogin();
-		} else {
+    if (this.state.pageMode === 'register') {
 			return this._handleRegister();
-		}
+    }
+    else {
+      return this._handleLogin();
+    }
 	}
 
 	_onRegisterPress = () => {
-		 if (this.state.isLoginMode) {
+    if (this.state.pageMode === 'register') {
 			 this.setState({
-				 altModeText: 'Login?',
-				 isLoginMode: !this.state.isLoginMode,
+				 altModeText: 'Register ?',
+				 pageMode: 'login',
 		   });
-		 } else {
-			 this.setState({
-				 altModeText: 'Register?',
-				 isLoginMode: !this.state.isLoginMode,
-		   });
-		 }
+     } else {
+      this.setState({
+        altModeText: 'Login ?',
+        pageMode: 'register',
+      });
+    }
 	}
+
+  _onForgotPasswordPress = () => {
+    this.setState({
+      isLoggedIn: false,
+      email: '',
+      password: '',
+      device_id: '',
+      message: '',
+      isVisibleForgotPasswordModal: true
+   });
+
+  }
+
+  _closeModalForgotPassword = () => {
+    this.setState({
+      isVisibleForgotPasswordModal: false
+    });  
+  }
+  
+  _closeModalResetPassword = () => {
+    this.setState({
+      isVisibleResetPasswordModal: false
+    });  
+  }
 
   _handleText = (key, text) => {
     if(text == '') {
@@ -130,14 +168,6 @@ export default class SmartPoolLogin extends Component<{}> {
 
 	_handleResponseLogin(response) {
     console.log('_handleResponseLogin user: ', response);
-
-			this.setState({
-				 isLoggedIn: false,
-         email: '',
-         password: '',
-				 device_id: '',
-         message: '',
-			});
 
       Auth.currentUserInfo()
       .then((me) => {
@@ -150,20 +180,32 @@ export default class SmartPoolLogin extends Component<{}> {
             isLoggedIn: true,
             currentUser: response});
       })
-      .catch(err => console.log(err));
+      .catch((err) => {
+        Alert.alert("Error: " + err.message);
+        console.log(err);
+      })
 
+			this.setState({
+        isLoggedIn: false,
+        email: '',
+        password: '',
+        device_id: '',
+        message: '',
+     });
 	}
 
 	_handleResponseRegister(response) {
-		console.log('new User: ', response);
+		// console.log('new User: ', response);
     this.setState({
        isLoggedIn: false,
        email: '',
        password: '',
        device_id: '',
        message: '',
+       pageMode: 'login',
+       altModeText: 'Login?'
     });
-    this._onRegisterPress();
+    // this._onRegisterPress();
 		this.props.navigation.navigate('SmartPoolLogin', {});
 	}
 
@@ -179,7 +221,10 @@ export default class SmartPoolLogin extends Component<{}> {
       })
       this._handleResponseLogin (user);
     })
-    .catch(err => Alert.alert("Error: " + err.message));
+    .catch((err) => {
+      Alert.alert("Error: " + err.message);
+      console.log(err);
+    })
     // err is an object with keys "code", "name" and "message"
   };
 
@@ -201,19 +246,191 @@ export default class SmartPoolLogin extends Component<{}> {
         validationData: []  //optional
     })
     .then((data) => {
-      this._handleResponseRegister(data);
+      console.log("SignUp Response: ", data);
+      this.setState({isVisibleConfirmModal: true});
     })
-    .catch(err => console.log(err));
+    .catch((err) => {
+      Alert.alert("Error: " + err.message);
+      console.log(err);
+    })
 
-    /* TODO Need to create ioT Thing shadow and add it to database*/
+    /* TODO Need to enter confirmation code */
   };
 
-  render() {
-		const buttonText = this.state.isLoginMode ? 'Login' : 'Register';
-    const instructionText = this.state.isLoginMode ? 'Login to SmartPoolApp' :
-     'Register Pool Timer Device!';
+  _handleConfirmation = () => {
+    const username = this.state.email;
+    const code = this.state.code;
 
-		const showDeviceId = this.state.isLoginMode ? null :
+    this.setState({isVisibleConfirmModal: false});
+
+    if (username && code) {
+      Auth.confirmSignUp(username, code)
+      .then((data) => {
+        // console.log("SignUp Confirm: ", data);
+        this._handleResponseRegister(data);
+      })
+      .catch((err) => {
+        Alert.alert("Error: " + err.message);
+        console.log(err);
+      })
+    }
+  } 
+
+  _handleForgotPassword = () => {
+    const username = this.state.email;
+
+    this.setState({isVisibleForgotPasswordModal: false});
+    
+    Auth.forgotPassword(username)
+    .then((data) => {
+      console.log(data);
+      this.setState({
+        isVisibleResetPasswordModal: true
+      });
+    })
+    .catch((err) => {
+      Alert.alert("Error: " + err.message);
+      console.log(err);
+    })
+  }
+
+
+  _handleSubmitPassword = () => {
+    const username = this.state.email;
+    const code = this.state.code;
+    const password = this.state.password;
+
+    this.setState({isVisibleResetPasswordModal: false});
+
+    Auth.forgotPasswordSubmit(username, code, password)
+    .then((data) => {
+      console.log(data);
+      this.setState({pageMode: "login"});
+    })
+    .catch((err) => {
+      Alert.alert("Error: " + err.message);
+      console.log(err);
+    })
+  }
+
+  _renderSignUpconfirm = () => (
+    <View style={styles.borderContainer}>
+      <View style={styles.inputEntryContainer}>
+        <View style={styles.entryContainer}>
+          <TextInput
+          underlineColorAndroid={'transparent'}
+          style={[styles.TextInputStyle, styles.InputEntryText]}
+          value={this.state.code ? this.state.code : ''}
+          onChange={(event) => this.setState({code: event.nativeEvent.text})}
+          placeholderTextColor={'white'}
+          placeholder='enter confirmation code'/>
+        </View>
+      </View>
+
+      <View style={styles.modalFooterContainer}>
+        <View style={styles.modalButtonContainer}>
+          <Button
+            onPress={this._handleConfirmation}
+            raised={true}
+            text={'OK'}
+            style={{text: styles.InputEntryText,
+                    container: styles.modalButtonContainer}}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  _renderForgotPassword = () => (
+    <View style={styles.borderContainer}>
+      <Text style={styles.BorderText}> Forgot Password </Text>
+      <View style={styles.inputEntryContainer}>
+        <View style={styles.entryContainer}>
+          <TextInput
+          underlineColorAndroid={'transparent'}
+          style={[styles.TextInputStyle, styles.InputEntryText]}
+          value={this.state.email ? this.state.email : ''}
+          onChange={(event) => this.setState({email: event.nativeEvent.text})}
+          placeholderTextColor={'white'}
+          placeholder='enter email'/>
+        </View>
+      </View>
+
+      <View style={styles.modalFooterContainer}>
+        <View style={styles.modalButtonContainer}>
+          <Button
+            onPress={this._handleForgotPassword}
+            raised={true}
+            text={'OK'}
+            style={{text: styles.InputEntryText,
+                    container: styles.modalButtonContainer}}
+          />
+        </View>    
+        <View style={styles.modalButtonContainer}>
+          <Button
+            onPress={this._closeModalForgotPassword}
+            raised={true}
+            text={'CLOSE'}
+            style={{text: styles.InputEntryText,
+                    container: styles.modalButtonContainer}}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  _renderResetPassword = () => (
+    <View style={styles.borderContainer}>
+      <Text style={styles.BorderText}> Reset Password </Text>
+      <View style={styles.inputEntryContainer}>
+        <View style={styles.entryContainer}>
+          <TextInput
+          underlineColorAndroid={'transparent'}
+          style={[styles.TextInputStyle, styles.InputEntryText]}
+          value={this.state.code ? this.state.code : ''}
+          onChange={(event) => this.setState({code: event.nativeEvent.text})}
+          placeholderTextColor={'white'}
+          placeholder='enter confirmation code'/>
+        </View>
+        
+        <View style={styles.entryContainer}>
+          <TextInput
+          underlineColorAndroid={'transparent'}
+          style={[styles.TextInputStyle, styles.InputEntryText]}
+          value={this.state.password ? this.state.password : ''}
+          onChange={(event) => this.setState({password: event.nativeEvent.text})}
+          placeholderTextColor={'white'}
+          placeholder='enter new password'/>
+        </View>
+      </View>
+
+      <View style={styles.modalFooterContainer}>
+        <View style={styles.modalButtonContainer}>
+          <Button
+            onPress={this._handleSubmitPassword}
+            raised={true}
+            text={'RESET'}
+            style={{text: styles.InputEntryText,
+                    container: styles.modalButtonContainer}}
+          />
+        </View>
+        <View style={styles.modalButtonContainer}>
+          <Button
+            onPress={this._closeModalResetPassword}
+            raised={true}
+            text={'CLOSE'}
+            style={{text: styles.InputEntryText,
+                    container: styles.modalButtonContainer}}
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  render() {
+    const buttonText = this.state.pageMode === 'register' ? 'REGISTER' : 'LOGIN';
+
+		const showDeviceId = this.state.pageMode === 'register' ?
     <View style={styles.entryContainer}>
       <Image source={require('./images/user.png')}/>
       <TextInput
@@ -223,7 +440,8 @@ export default class SmartPoolLogin extends Component<{}> {
       onChange={(event) => this.setState({device_id: event.nativeEvent.text})}
       placeholderTextColor={'white'}
       placeholder='enter device_id'/>
-    </View>;
+    </View>
+    : null;
 
     return (
       <ThemeProvider uiTheme={darkBaseTheme}>
@@ -254,8 +472,8 @@ export default class SmartPoolLogin extends Component<{}> {
               <TextInput
               underlineColorAndroid={'transparent'}
               style={[styles.TextInputStyle, styles.InputEntryText]}
-    					value={this.state.password}
-    					onChange={(event) => this.setState({password: event.nativeEvent.text})}
+              value={this.state.password}
+              onChange={(event) => this.setState({password: event.nativeEvent.text})}
               secureTextEntry={true}
               placeholderTextColor={'white'}
               placeholder='enter password'/>
@@ -264,21 +482,57 @@ export default class SmartPoolLogin extends Component<{}> {
             {showDeviceId}
           </View>
 
-            <View style={styles.actionTextContainer}>
-              <Icon.Button name='sign-in'
-                style={styles.actionButtonContainer}
-                onPress={this._onSubmitPressed}>
-                <Text style={styles.actionTextStyle}>
-                  {buttonText}
-                </Text>
-              </Icon.Button>
-            </View>
+          <View style={styles.actionTextContainer}>
+            <Icon.Button name='sign-in'
+              style={styles.actionButtonContainer}
+              onPress={this._onSubmitPressed}>
+              <Text style={styles.actionTextStyle}>
+                {buttonText}
+              </Text>
+            </Icon.Button>
+          </View>
+
+          <Modal
+            isVisible={this.state.isVisibleConfirmModal}
+            animationIn={'slideInLeft'}
+            animationOut={'slideOutRight'}
+            transparent={true}
+            presentationStyle={'overFullScreen'}
+          >
+            {this._renderSignUpconfirm()}
+          </Modal>
+
+          <Modal
+            isVisible={this.state.isVisibleForgotPasswordModal}
+            animationIn={'slideInLeft'}
+            animationOut={'slideOutRight'}
+            transparent={true}
+            presentationStyle={'overFullScreen'}
+          >
+            {this._renderForgotPassword()}
+          </Modal>
+
+          <Modal
+            isVisible={this.state.isVisibleResetPasswordModal}
+            animationIn={'slideInLeft'}
+            animationOut={'slideOutRight'}
+            transparent={true}
+            presentationStyle={'overFullScreen'}
+          >
+            {this._renderResetPassword()}
+          </Modal>
+
 
           <View style={styles.footerContainer}>
             <Text
               style={styles.footerText}
-              onPress={this._onRegisterPress}>
+              onPress={(this._onRegisterPress)}>
               {this.state.altModeText}
+            </Text>
+            <Text
+              style={styles.footerText}
+              onPress={this._onForgotPasswordPress}>
+              Forgot Password ?
             </Text>
          </View>
 
@@ -329,6 +583,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  borderContainer: {
+    flex: 1,
+    backgroundColor: 'black',
+    maxHeight: 200,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  BorderText: {
+    fontSize: 20,
+    fontStyle: 'normal',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: 'white',
   },
   TextInputStyle: {
 		height: 35,
@@ -390,4 +659,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15
   },
+  modalFooterContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center', /* primary axis */
+    alignItems: 'flex-end',
+    backgroundColor: 'black',
+    maxHeight: 40,
+  },
+  modalButtonContainer: {
+    flex: 1,
+    backgroundColor: Color(COLOR.grey700),
+  }
 });
